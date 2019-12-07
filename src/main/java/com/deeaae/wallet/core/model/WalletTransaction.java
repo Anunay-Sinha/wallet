@@ -19,6 +19,6 @@ public class WalletTransaction {
     BigDecimal netBalance;
     LocalDateTime timestamp;
     String author;
-    String shoetDescription;
+    String shortDescription;
 
 }
