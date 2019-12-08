@@ -7,23 +7,26 @@ import com.deeaae.wallet.core.model.WalletTransaction;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.platform.commons.annotation.Testable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
+@SpringBootTest
 public class UserWalletManagerTest {
 
+    @Autowired
     private UserWalletManager userWalletManager;
     private String accountId = "Acnt001";
     private String authorId = "RRB";
 
     @BeforeEach
     void initTestCase() {
-        userWalletManager = new UserWalletManagerImpl();
         userWalletManager.credit(createTransactionRequest(new BigDecimal(10), TransactionType.CREDIT));
     }
 
@@ -43,8 +46,16 @@ public class UserWalletManagerTest {
 
     @Test
     void testBalance() {
-        BigDecimal startBalance = userWalletManager.getBalance(accountId);
-        Assertions.assertEquals(userWalletManager.getBalance(accountId).intValue(),10);
+        String testAccountId = UUID.randomUUID().toString();
+        BigDecimal startBalance = userWalletManager.getBalance(testAccountId);
+        Assertions.assertEquals(userWalletManager.getBalance(testAccountId).intValue(),0);
+        TransactionRequest transactionRequest = createTransactionRequest(new BigDecimal(10),TransactionType.CREDIT);
+        transactionRequest.setAccountId(testAccountId);
+        userWalletManager.credit(transactionRequest);
+
+        startBalance = userWalletManager.getBalance(testAccountId);
+        Assertions.assertEquals(userWalletManager.getBalance(testAccountId).intValue(),10);
+
     }
 
     @Test
@@ -60,7 +71,7 @@ public class UserWalletManagerTest {
     void testDebit() {
         BigDecimal startBalance = userWalletManager.getBalance(accountId);
         int sumToBeDeducted = 5;
-        userWalletManager.credit(createTransactionRequest(new BigDecimal(sumToBeDeducted), TransactionType.DEBIT));
+        userWalletManager.debit(createTransactionRequest(new BigDecimal(sumToBeDeducted), TransactionType.DEBIT));
         BigDecimal endBalance = startBalance.subtract(new BigDecimal(sumToBeDeducted));
         Assertions.assertEquals(userWalletManager.getBalance(accountId),endBalance);
     }
