@@ -13,14 +13,14 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-public class WalletTransaction {
+public class RefundNRollbackTransaction {
     @Id
     String transactionId;
+    String parentTransactionId;
     String accountId;
     BigDecimal amount;
     @Enumerated(EnumType.STRING)
-    TransactionType transactionType;
-    BigDecimal netBalance;
+    RefundType refundType;
     LocalDateTime timestamp;
     String author;
     String shortDescription;

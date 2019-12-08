@@ -1,9 +1,6 @@
 package com.deeaae.wallet.core;
 
-import com.deeaae.wallet.core.model.RefundTransactionRequest;
-import com.deeaae.wallet.core.model.TransactionRequest;
-import com.deeaae.wallet.core.model.TransactionType;
-import com.deeaae.wallet.core.model.WalletTransaction;
+import com.deeaae.wallet.core.model.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +41,33 @@ public class UserWalletManagerTest {
 
     }
 
+    private RefundTransactionRequest createRefundRequest(int amount, WalletTransaction parentTransaction) {
+        RefundTransactionRequest refundTransactionRequest = RefundTransactionRequest.builder()
+                .parentTransactionId(parentTransaction.getTransactionId())
+                .transactionId(UUID.randomUUID().toString())
+                .amount(new BigDecimal(amount))
+                .shortDescription("refund")
+                .author(authorId)
+                .accountId(accountId)
+                .build();
+        return refundTransactionRequest;
+    }
+
+    private RollbackTransactionRequest createRollbackRequest(WalletTransaction parentTransaction) {
+        RollbackTransactionRequest rollbackTransactionRequest = RollbackTransactionRequest.builder()
+                .transactionIdToBeRolledBack(parentTransaction.getTransactionId())
+                .shortDescription("refund")
+                .author(authorId)
+                .accountId(accountId)
+                .build();
+        return rollbackTransactionRequest;
+    }
+
+    private WalletTransaction createCreditTransaction(int amount) {
+        WalletTransaction walletTransaction = userWalletManager.credit(createTransactionRequest(new BigDecimal(amount),TransactionType.CREDIT));
+        return walletTransaction;
+    }
+
     @Test
     void testBalance() {
         String testAccountId = UUID.randomUUID().toString();
@@ -74,29 +98,21 @@ public class UserWalletManagerTest {
         userWalletManager.debit(createTransactionRequest(new BigDecimal(sumToBeDeducted), TransactionType.DEBIT));
         BigDecimal endBalance = startBalance.subtract(new BigDecimal(sumToBeDeducted));
         Assertions.assertEquals(userWalletManager.getBalance(accountId),endBalance);
+
+
+        Assertions.assertThrows(Exception.class,
+                ()->userWalletManager.debit(createTransactionRequest(new BigDecimal(50000),
+                        TransactionType.DEBIT)));
+
     }
 
-    private WalletTransaction createCreditTransaction(int amount) {
-        WalletTransaction walletTransaction = userWalletManager.credit(createTransactionRequest(new BigDecimal(amount),TransactionType.CREDIT));
-        return walletTransaction;
-    }
 
-    private RefundTransactionRequest createRefundRequest(int amount, WalletTransaction parentTransaction) {
-        RefundTransactionRequest refundTransactionRequest = RefundTransactionRequest.builder()
-                .parentTransactionId(parentTransaction.getTransactionId())
-                .transactionId(UUID.randomUUID().toString())
-                .amount(new BigDecimal(amount))
-                .shortDescription("refund")
-                .author(authorId)
-                .accountId(accountId)
-                .build();
-        return refundTransactionRequest;
-    }
 
     @Test
     void testRefund() {
         // Add money
-        WalletTransaction walletTransaction = createCreditTransaction(100);
+        WalletTransaction walletTransaction = createCreditTransaction(200);
+        walletTransaction = userWalletManager.debit(createTransactionRequest(new BigDecimal(100), TransactionType.DEBIT));
 
         RefundTransactionRequest refundTransactionRequest = createRefundRequest(60, walletTransaction);
         BigDecimal startBalance = userWalletManager.getBalance(accountId);
@@ -110,13 +126,22 @@ public class UserWalletManagerTest {
         endBalance = userWalletManager.getBalance(accountId);
         Assertions.assertEquals(endBalance, startBalance.add(new BigDecimal(30)));
 
-        Assertions.assertThrows(Exception.class, ()->userWalletManager.refund(createRefundRequest(30, walletTransaction)));
+        final WalletTransaction walletTransaction1 = walletTransaction;
+        Assertions.assertThrows(Exception.class, ()->userWalletManager.refund(createRefundRequest(30, walletTransaction1)));
     }
 
     @Test
     void testRollback() {
-        // Add money
-        // roll back same amount
+        WalletTransaction walletTransaction = createCreditTransaction(200);
+        BigDecimal startBalance = userWalletManager.getBalance(accountId);
+        walletTransaction = userWalletManager.debit(createTransactionRequest(new BigDecimal(100), TransactionType.DEBIT));
+        RollbackTransactionRequest rollbackTransactionRequest = createRollbackRequest(walletTransaction);
+        userWalletManager.rollBack(rollbackTransactionRequest);
+        BigDecimal endBalance = userWalletManager.getBalance(accountId);
+        Assertions.assertEquals(endBalance, startBalance);
+        WalletTransaction walletTransaction1 = walletTransaction;
+        Assertions.assertThrows(Exception.class, ()->userWalletManager.rollBack(createRollbackRequest(walletTransaction1)));
+
 
         // Add money
         // roll back same amount again, this should fail.
